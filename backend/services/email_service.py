@@ -12,7 +12,7 @@ from email.mime.multipart import MIMEMultipart
 EMAIL_USER = os.environ.get("EMAIL_USER")
 EMAIL_PASS = os.environ.get("EMAIL_PASS")
 SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
+SMTP_PORT = 465
 
 def generate_otp(length: int = 6) -> str:
     """Generate a secure random numeric OTP of the specified length."""
@@ -36,10 +36,9 @@ def send_otp_email(to_email: str, otp: str):
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        print(f"DEBUG: Connecting to SMTP server {SMTP_SERVER}:{SMTP_PORT}...")
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
-        server.starttls()
-        print("DEBUG: SMTP connected and TLS started. Logging in...")
+        print(f"DEBUG: Connecting to SMTP server {SMTP_SERVER}:{SMTP_PORT} using SSL...")
+        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=10)
+        print("DEBUG: SMTP_SSL connected. Logging in...")
         server.login(EMAIL_USER, EMAIL_PASS)
         text = msg.as_string()
         server.sendmail(EMAIL_USER, to_email, text)
