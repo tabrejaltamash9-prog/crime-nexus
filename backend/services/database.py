@@ -1,16 +1,19 @@
 """
-SQLite Database Service for Crime Nexus.
-Manages cases, evidence, and secure cryptographic entities.
+PostgreSQL Database Service for Crime Nexus (Supabase).
 """
 
-import aiosqlite
 import os
-from pathlib import Path
+import re
+import asyncpg
+import asyncio
+import logging
 
-DATABASE_DIR = Path(__file__).resolve().parent.parent / "data"
-DATABASE_PATH = DATABASE_DIR / "crime_nexus.db"
+logger = logging.getLogger(__name__)
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 SCHEMA_SQL = """
+-- Schema definition adapted for Postgres
 CREATE TABLE IF NOT EXISTS users (
     user_id TEXT PRIMARY KEY,
     officer_id TEXT UNIQUE NOT NULL,
@@ -190,12 +193,12 @@ CREATE TABLE IF NOT EXISTS ai_query_log (
     query_id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
     username TEXT NOT NULL,
-    query_type TEXT NOT NULL,           -- 'global_search' | 'local_chat'
-    case_id TEXT,                       -- NULL for global, set for local
+    query_type TEXT NOT NULL,
+    case_id TEXT,
     query_text TEXT NOT NULL,
     provider_used TEXT,
     model_used TEXT,
-    context_strategy TEXT,              -- 'full_document' | 'chunk_rag' | 'summarized'
+    context_strategy TEXT,
     failover_occurred INTEGER DEFAULT 0,
     failover_from TEXT,
     documents_used INTEGER DEFAULT 0,
@@ -211,36 +214,107 @@ CREATE INDEX IF NOT EXISTS idx_ai_query_log_user ON ai_query_log(user_id);
 CREATE INDEX IF NOT EXISTS idx_ai_query_log_case ON ai_query_log(case_id);
 """
 
-async def get_db() -> aiosqlite.Connection:
-    """Get an async database connection."""
-    DATABASE_DIR.mkdir(parents=True, exist_ok=True)
-    db = await aiosqlite.connect(str(DATABASE_PATH))
-    db.row_factory = aiosqlite.Row
-    await db.execute("PRAGMA journal_mode=WAL")
-    await db.execute("PRAGMA foreign_keys=ON")
-    return db
+class AsyncpgCursorWrapper:
+    def __init__(self, conn, query, args):
+        self.conn = conn
+        self.query = query
+        self.args = args
+        self._results = None
+
+    def _convert_query(self, query):
+        parts = query.split('?')
+        if len(parts) == 1:
+            return query
+        new_query = parts[0]
+        for i, part in enumerate(parts[1:], 1):
+            new_query += f"${i}{part}"
+            
+        new_query = new_query.replace("INSERT OR REPLACE INTO otp_codes", "INSERT INTO otp_codes")
+        if "INSERT INTO otp_codes" in new_query and "ON CONFLICT" not in new_query:
+            new_query += " ON CONFLICT (email) DO UPDATE SET otp = EXCLUDED.otp, expires_at = EXCLUDED.expires_at, attempts = EXCLUDED.attempts"
+            
+        return new_query
+
+    async def _execute(self):
+        q = self._convert_query(self.query)
+        try:
+            if q.strip().upper().startswith("SELECT") or "RETURNING" in q.upper():
+                rows = await self.conn.fetch(q, *self.args)
+                self._results = rows
+            else:
+                await self.conn.execute(q, *self.args)
+                self._results = []
+        except Exception as e:
+            logger.error(f"SQL Error: {e} | Query: {q} | Args: {self.args}")
+            raise
+
+    async def fetchone(self):
+        if self._results is None:
+            await self._execute()
+        return dict(self._results[0]) if self._results else None
+
+    async def fetchall(self):
+        if self._results is None:
+            await self._execute()
+        return [dict(r) for r in self._results]
+
+class AsyncpgConnectionWrapper:
+    def __init__(self, pool):
+        self.pool = pool
+        self.conn = None
+
+    async def execute(self, query, args=()):
+        cursor = AsyncpgCursorWrapper(self.conn, query, args)
+        await cursor._execute()
+        return cursor
+
+    async def commit(self):
+        pass
+
+    async def close(self):
+        if self.conn:
+            await self.pool.release(self.conn)
+            self.conn = None
+
+    async def executescript(self, script):
+        await self.conn.execute(script)
+
+_pool = None
+
+async def get_db():
+    global _pool
+    if not DATABASE_URL:
+        # Graceful fallback for local development without Postgres
+        logger.warning("DATABASE_URL is not set! Ensure you have set the Supabase Postgres connection string.")
+        
+    if _pool is None:
+        _pool = await asyncpg.create_pool(DATABASE_URL)
+    
+    wrapper = AsyncpgConnectionWrapper(_pool)
+    wrapper.conn = await _pool.acquire()
+    return wrapper
 
 async def init_db():
-    """Initialize the database schema."""
+    if not DATABASE_URL:
+        return
     db = await get_db()
     try:
         await db.executescript(SCHEMA_SQL)
-        await db.commit()
     finally:
         await db.close()
 
 async def reset_db_for_prototype():
-    """Drops all tables and recreates them. For prototype use only."""
+    if not DATABASE_URL:
+        return
     db = await get_db()
     try:
         tables = [
             "evidence_signatures", "audit_events", "evidence_key_wrappers",
             "evidence", "case_investigators", "cases", "otp_codes",
-            "certificates", "devices", "users", "ledger_entries", "person_records"
+            "certificates", "devices", "users", "ledger_entries", "person_records", "ai_query_log"
         ]
         for table in tables:
-            await db.execute(f"DROP TABLE IF EXISTS {table}")
-        await db.commit()
+            await db.execute(f"DROP TABLE IF EXISTS {table} CASCADE")
     finally:
         await db.close()
     await init_db()
