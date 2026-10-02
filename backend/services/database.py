@@ -2,15 +2,18 @@
 PostgreSQL Database Service for Crime Nexus (Supabase).
 """
 
-import os
-import re
-import asyncpg
-import asyncio
-import logging
+import urllib.parse
 
 logger = logging.getLogger(__name__)
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# Support both a full DATABASE_URL or individual parameters
+# Individual params avoid URL-encoding issues with special chars in passwords
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+DB_HOST = os.environ.get("DB_HOST", "")
+DB_PORT = int(os.environ.get("DB_PORT", "6543"))
+DB_USER = os.environ.get("DB_USER", "")
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
+DB_NAME = os.environ.get("DB_NAME", "postgres")
 
 SCHEMA_SQL = """
 -- Schema definition adapted for Postgres
@@ -283,21 +286,34 @@ _pool = None
 
 async def get_db():
     global _pool
-    if not DATABASE_URL or not DATABASE_URL.strip().startswith("postgres"):
-        logger.error(f"CRITICAL ERROR: DATABASE_URL is missing or invalid. Current value: '{DATABASE_URL}'")
-        logger.error(f"Available Environment Variable Keys: {list(os.environ.keys())}")
+    
+    use_params = bool(DB_HOST and DB_USER and DB_PASSWORD)
+    use_url = bool(DATABASE_URL and DATABASE_URL.strip().startswith("postgres"))
+    
+    if not use_params and not use_url:
+        logger.error(f"CRITICAL: No valid DB config found!")
+        logger.error(f"DB_HOST='{DB_HOST}', DB_USER='{DB_USER}', DB_PASSWORD={'SET' if DB_PASSWORD else 'MISSING'}")
+        logger.error(f"DATABASE_URL='{DATABASE_URL[:30] if DATABASE_URL else 'MISSING'}'")
         raise ValueError(
-            "\n\n=======================================================\n"
-            "CRASH: DATABASE_URL is missing!\n"
-            "Render cannot find your database connection string.\n"
-            "Please check your Render Environment Variables:\n"
-            "1. Ensure the key is exactly DATABASE_URL (no spaces).\n"
-            "2. Ensure you clicked 'Save Changes' at the bottom of the page.\n"
-            "=======================================================\n"
+            "No database configuration found. Set either:\n"
+            "Option A (RECOMMENDED): DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME\n"
+            "Option B: DATABASE_URL (ensure password has no special chars like @ # !)\n"
         )
         
     if _pool is None:
-        _pool = await asyncpg.create_pool(DATABASE_URL)
+        if use_params:
+            logger.info(f"Connecting to Postgres via individual params: host={DB_HOST}, port={DB_PORT}, user={DB_USER}")
+            _pool = await asyncpg.create_pool(
+                host=DB_HOST,
+                port=DB_PORT,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME,
+                ssl="require",
+            )
+        else:
+            logger.info(f"Connecting to Postgres via DATABASE_URL...")
+            _pool = await asyncpg.create_pool(DATABASE_URL)
     
     wrapper = AsyncpgConnectionWrapper(_pool)
     wrapper.conn = await _pool.acquire()
