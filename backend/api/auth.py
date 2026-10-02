@@ -19,6 +19,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/send-otp")
 async def send_otp(payload: OTPRequest):
+    print(f"DEBUG: Received POST request for send-otp for email: {payload.email}")
     db = await get_db()
     try:
         # Check if email is already registered

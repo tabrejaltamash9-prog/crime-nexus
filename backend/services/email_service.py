@@ -36,8 +36,10 @@ def send_otp_email(to_email: str, otp: str):
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        print(f"DEBUG: Connecting to SMTP server {SMTP_SERVER}:{SMTP_PORT}...")
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
         server.starttls()
+        print("DEBUG: SMTP connected and TLS started. Logging in...")
         server.login(EMAIL_USER, EMAIL_PASS)
         text = msg.as_string()
         server.sendmail(EMAIL_USER, to_email, text)
