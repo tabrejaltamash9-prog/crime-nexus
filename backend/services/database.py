@@ -283,9 +283,18 @@ _pool = None
 
 async def get_db():
     global _pool
-    if not DATABASE_URL:
-        # Graceful fallback for local development without Postgres
-        logger.warning("DATABASE_URL is not set! Ensure you have set the Supabase Postgres connection string.")
+    if not DATABASE_URL or not DATABASE_URL.strip().startswith("postgres"):
+        logger.error(f"CRITICAL ERROR: DATABASE_URL is missing or invalid. Current value: '{DATABASE_URL}'")
+        logger.error(f"Available Environment Variable Keys: {list(os.environ.keys())}")
+        raise ValueError(
+            "\n\n=======================================================\n"
+            "CRASH: DATABASE_URL is missing!\n"
+            "Render cannot find your database connection string.\n"
+            "Please check your Render Environment Variables:\n"
+            "1. Ensure the key is exactly DATABASE_URL (no spaces).\n"
+            "2. Ensure you clicked 'Save Changes' at the bottom of the page.\n"
+            "=======================================================\n"
+        )
         
     if _pool is None:
         _pool = await asyncpg.create_pool(DATABASE_URL)
