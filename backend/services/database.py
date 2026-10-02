@@ -2,6 +2,11 @@
 PostgreSQL Database Service for Crime Nexus (Supabase).
 """
 
+import os
+import re
+import asyncpg
+import asyncio
+import logging
 import urllib.parse
 
 logger = logging.getLogger(__name__)
