@@ -1,0 +1,26 @@
+# Environments
+.env
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+venv/
+env/
+.venv/
+
+# IDEs and Tools
+.idea/
+.vscode/
+
+# Build and Temp
+build/
+dist/
+*.log
+
+# Runtime Data
+backend/data/
+
+# Blockchain
+wallet/
+crypto-config/

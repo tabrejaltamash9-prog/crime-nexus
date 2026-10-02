@@ -1,0 +1,845 @@
+/* ── Biometric Person Photo Ingestion Modal ─ Light Glassmorphism ────────── */
+
+.bio-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(148, 185, 230, 0.25);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+  padding: 20px;
+  animation: bioFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes bioFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bioScaleUp {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.bio-modal-dialog {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 18px;
+  width: 960px;
+  max-width: 96vw;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  position: relative;
+  animation: bioScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Subtle top accent line */
+.bio-modal-dialog::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #3b82f6 30%, #60a5fa 50%, #3b82f6 70%, transparent);
+  z-index: 10;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+.bio-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 22px 28px 18px;
+  border-bottom: 1px solid rgba(148, 185, 230, 0.18);
+  background: rgba(241, 245, 249, 0.5);
+}
+
+.bio-header-title-wrap {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.bio-header-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+  flex-shrink: 0;
+}
+
+.bio-header-text h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.bio-header-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  font-family: var(--font-mono, monospace);
+}
+
+.bio-header-text p {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 3px;
+  margin-bottom: 0;
+}
+
+.bio-modal-close-btn {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(148, 185, 230, 0.3);
+  color: #64748b;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.bio-modal-close-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #dc2626;
+}
+
+/* ── Body Layout ──────────────────────────────────────────────────────── */
+.bio-modal-body {
+  padding: 24px 28px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.bio-modal-grid {
+  display: grid;
+  grid-template-columns: 330px 1fr;
+  gap: 26px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .bio-modal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Left Column: Media & Ingestion Station ───────────────────────────── */
+.bio-capture-station {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bio-station-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Viewfinder Dropzone */
+.bio-viewfinder {
+  border: 2px dashed rgba(148, 185, 230, 0.4);
+  border-radius: 14px;
+  background: rgba(241, 245, 249, 0.5);
+  padding: 30px 20px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.25s ease;
+  overflow: hidden;
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.bio-viewfinder:hover,
+.bio-viewfinder.drag-over {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.04);
+}
+
+/* Reticle brackets */
+.reticle-bracket {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: rgba(148, 185, 230, 0.8);
+  border-style: solid;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.bio-viewfinder:hover .reticle-bracket,
+.bio-viewfinder.drag-over .reticle-bracket {
+  border-color: #3b82f6;
+  width: 18px;
+  height: 18px;
+}
+
+.reticle-top-left { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
+.reticle-top-right { top: 8px; right: 8px; border-width: 2px 2px 0 0; }
+.reticle-bottom-left { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; }
+.reticle-bottom-right { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+
+.bio-radar-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6;
+  margin-bottom: 14px;
+  transition: transform 0.3s ease;
+}
+
+.bio-viewfinder:hover .bio-radar-circle {
+  transform: scale(1.08);
+  color: #2563eb;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.bio-viewfinder-prompt {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.bio-viewfinder-sub {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+.bio-browse-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #2563eb;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  padding: 6px 14px;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+}
+
+.bio-viewfinder:hover .bio-browse-pill {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: #3b82f6;
+}
+
+/* ── Live Photo Preview Frame ─────────────────────────────────────────── */
+.bio-preview-container {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(148, 185, 230, 0.3);
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.bio-preview-media {
+  width: 100%;
+  height: 270px;
+  position: relative;
+  background: rgba(241, 245, 249, 0.8);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bio-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* HUD Overlay on Preview */
+.bio-hud-top {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.bio-hud-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+  color: #059669;
+  border: 1px solid rgba(5, 150, 105, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.bio-hud-tag.scanning {
+  color: #2563eb;
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+.bio-hud-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #059669;
+  box-shadow: 0 0 4px rgba(5, 150, 105, 0.5);
+  animation: bioBlink 1.5s infinite;
+}
+
+@keyframes bioBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.bio-hud-dot.scanning {
+  background: #3b82f6;
+  box-shadow: 0 0 4px rgba(59, 130, 246, 0.5);
+}
+
+/* Laser scanline animation when uploading */
+.bio-scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #3b82f6 30%, #60a5fa 70%, transparent);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+  z-index: 6;
+  animation: bioLaserSweep 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes bioLaserSweep {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(270px); }
+}
+
+/* Face target reticle in preview */
+.bio-face-reticle {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  border: 1px dashed rgba(59, 130, 246, 0.6);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.bio-face-reticle::after {
+  content: '+';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(59, 130, 246, 0.7);
+  font-size: 18px;
+  font-family: monospace;
+}
+
+/* Preview footer bar */
+.bio-preview-footer {
+  padding: 10px 14px;
+  background: rgba(241, 245, 249, 0.8);
+  border-top: 1px solid rgba(148, 185, 230, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bio-file-meta {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-width: 180px;
+}
+
+.bio-file-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bio-file-specs {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-family: var(--font-mono, monospace);
+}
+
+.bio-preview-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Quality guidance checklist */
+.bio-guidelines-card {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(148, 185, 230, 0.25);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.bio-guidelines-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bio-guideline-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-bottom: 5px;
+}
+
+.bio-guideline-item:last-child {
+  margin-bottom: 0;
+}
+
+.bio-guideline-icon {
+  color: #059669;
+  flex-shrink: 0;
+}
+
+/* ── Right Column: Dossier Form Sections ──────────────────────────────── */
+.bio-dossier-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bio-section-card {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(148, 185, 230, 0.28);
+  border-radius: 12px;
+  padding: 16px 18px;
+  transition: border-color 0.2s ease;
+}
+
+.bio-section-card:focus-within {
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.bio-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(148, 185, 230, 0.2);
+}
+
+.bio-section-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bio-section-title svg {
+  color: #3b82f6;
+}
+
+.bio-section-badge {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+/* Form Fields */
+.bio-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bio-form-row.three-col {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.bio-form-row:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+  .bio-form-row, .bio-form-row.three-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bio-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.bio-field-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.bio-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bio-req {
+  color: #dc2626;
+  font-weight: bold;
+}
+
+/* Light Mode Inputs */
+.bio-input,
+.bio-select,
+.bio-textarea {
+  width: 100%;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(148, 185, 230, 0.4);
+  border-radius: 8px;
+  color: #1e293b;
+  font-size: 0.84rem;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.bio-input:focus,
+.bio-select:focus,
+.bio-textarea:focus {
+  border-color: #3b82f6;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.bio-input::placeholder,
+.bio-textarea::placeholder {
+  color: #94a3b8;
+}
+
+.bio-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+.bio-select option {
+  background: #ffffff;
+  color: #1e293b;
+  padding: 8px;
+}
+
+.bio-textarea {
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.4;
+}
+
+/* ── Role Selection Pills ─────────────────────────────────────────────── */
+.bio-role-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.bio-role-pill {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(148, 185, 230, 0.3);
+  background: rgba(255, 255, 255, 0.6);
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.bio-role-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+/* Role Specific Accents */
+.bio-role-pill.role-suspect .bio-role-dot { background: #ef4444; }
+.bio-role-pill.role-suspect.active {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.bio-role-pill.role-poi .bio-role-dot { background: #f59e0b; }
+.bio-role-pill.role-poi.active {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+.bio-role-pill.role-witness .bio-role-dot { background: #3b82f6; }
+.bio-role-pill.role-witness.active {
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
+.bio-role-pill.role-victim .bio-role-dot { background: #a855f7; }
+.bio-role-pill.role-victim.active {
+  border-color: rgba(168, 85, 247, 0.4);
+  background: rgba(168, 85, 247, 0.1);
+  color: #9333ea;
+}
+
+.bio-role-pill.role-missing .bio-role-dot { background: #10b981; }
+.bio-role-pill.role-missing.active {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+/* ── Progress & Processing Status ─────────────────────────────────────── */
+.bio-progress-box {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 10px;
+}
+
+.bio-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.bio-progress-stage {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bio-progress-pct {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #3b82f6;
+  font-family: var(--font-mono, monospace);
+}
+
+.bio-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(148, 185, 230, 0.3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bio-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa, #10b981);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* ── Success Receipt View ─────────────────────────────────────────────── */
+.bio-success-receipt {
+  text-align: center;
+  padding: 40px 20px;
+  animation: bioFadeIn 0.3s ease;
+}
+
+.bio-success-icon-wrap {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.1);
+  border: 2px solid rgba(16, 185, 129, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #059669;
+  margin: 0 auto 20px;
+}
+
+.bio-success-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 6px;
+}
+
+.bio-success-subtitle {
+  font-size: 0.84rem;
+  color: #64748b;
+  max-width: 480px;
+  margin: 0 auto 24px;
+}
+
+.bio-receipt-card {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(148, 185, 230, 0.28);
+  border-radius: 12px;
+  padding: 16px 20px;
+  max-width: 520px;
+  margin: 0 auto;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bio-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  border-bottom: 1px solid rgba(148, 185, 230, 0.15);
+  padding-bottom: 8px;
+}
+
+.bio-receipt-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.bio-receipt-label {
+  color: #64748b;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+.bio-receipt-val {
+  color: #1e293b;
+  font-weight: 600;
+  font-family: var(--font-mono, monospace);
+}
+
+/* Error Callout */
+.bio-error-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(254, 226, 226, 0.6);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: 10px;
+  color: #dc2626;
+  font-size: 0.8rem;
+  margin-top: 10px;
+  animation: bioFadeIn 0.3s ease;
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+.bio-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 28px;
+  border-top: 1px solid rgba(148, 185, 230, 0.2);
+  background: rgba(241, 245, 249, 0.5);
+}
+
+.bio-footer-security-seal {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.bio-footer-security-seal svg {
+  color: #3b82f6;
+}
+
+.bio-footer-buttons {
+  display: flex;
+  gap: 12px;
+}
