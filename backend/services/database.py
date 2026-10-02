@@ -1,7 +1,3 @@
-"""
-PostgreSQL Database Service for Crime Nexus (Supabase).
-"""
-
 import os
 import re
 import asyncpg
@@ -11,14 +7,28 @@ import urllib.parse
 
 logger = logging.getLogger(__name__)
 
-# Support both a full DATABASE_URL or individual parameters
-# Individual params avoid URL-encoding issues with special chars in passwords
+# Read individual params — support BOTH naming conventions (DB_HOST and DATABASE_HOST)
+DB_HOST = os.environ.get("DB_HOST") or os.environ.get("DATABASE_HOST", "")
+DB_PORT = int(os.environ.get("DB_PORT") or os.environ.get("DATABASE_PORT", "6543"))
+DB_USER = os.environ.get("DB_USER") or os.environ.get("DATABASE_USER", "")
+DB_PASSWORD = os.environ.get("DB_PASSWORD") or os.environ.get("DATABASE_PASSWORD", "")
+DB_NAME = os.environ.get("DB_NAME") or os.environ.get("DATABASE_NAME", "postgres")
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
-DB_HOST = os.environ.get("DB_HOST", "")
-DB_PORT = int(os.environ.get("DB_PORT", "6543"))
-DB_USER = os.environ.get("DB_USER", "")
-DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
-DB_NAME = os.environ.get("DB_NAME", "postgres")
+
+# If individual params are set, build the URL from them (avoids special char issues)
+# If only DATABASE_URL is set, parse it to extract individual components
+if not DB_HOST and DATABASE_URL:
+    try:
+        _parsed = urllib.parse.urlparse(DATABASE_URL)
+        DB_HOST = _parsed.hostname or ""
+        DB_PORT = _parsed.port or 6543
+        DB_USER = urllib.parse.unquote(_parsed.username or "")
+        DB_PASSWORD = urllib.parse.unquote(_parsed.password or "")
+        DB_NAME = (_parsed.path or "/postgres").lstrip("/") or "postgres"
+        logger.info(f"Parsed DB connection from DATABASE_URL: host={DB_HOST}, user={DB_USER}")
+    except Exception as e:
+        logger.error(f"Failed to parse DATABASE_URL: {e}")
+
 
 SCHEMA_SQL = """
 -- Schema definition adapted for Postgres
@@ -292,40 +302,31 @@ _pool = None
 async def get_db():
     global _pool
     
-    use_params = bool(DB_HOST and DB_USER and DB_PASSWORD)
-    use_url = bool(DATABASE_URL and DATABASE_URL.strip().startswith("postgres"))
-    
-    if not use_params and not use_url:
-        logger.error(f"CRITICAL: No valid DB config found!")
+    if not DB_HOST or not DB_USER or not DB_PASSWORD:
+        logger.error(f"CRITICAL: Missing DB connection params!")
         logger.error(f"DB_HOST='{DB_HOST}', DB_USER='{DB_USER}', DB_PASSWORD={'SET' if DB_PASSWORD else 'MISSING'}")
-        logger.error(f"DATABASE_URL='{DATABASE_URL[:30] if DATABASE_URL else 'MISSING'}'")
         raise ValueError(
-            "No database configuration found. Set either:\n"
-            "Option A (RECOMMENDED): DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME\n"
-            "Option B: DATABASE_URL (ensure password has no special chars like @ # !)\n"
+            "Database not configured. Set these Render env vars:\n"
+            "DATABASE_HOST, DATABASE_USER, DATABASE_PASSWORD, DATABASE_PORT (6543), DATABASE_NAME (postgres)"
         )
         
     if _pool is None:
-        if use_params:
-            logger.info(f"Connecting to Postgres via individual params: host={DB_HOST}, port={DB_PORT}, user={DB_USER}")
-            _pool = await asyncpg.create_pool(
-                host=DB_HOST,
-                port=DB_PORT,
-                user=DB_USER,
-                password=DB_PASSWORD,
-                database=DB_NAME,
-                ssl="require",
-            )
-        else:
-            logger.info(f"Connecting to Postgres via DATABASE_URL...")
-            _pool = await asyncpg.create_pool(DATABASE_URL)
+        logger.info(f"Connecting to Postgres: host={DB_HOST}, port={DB_PORT}, user={DB_USER}")
+        _pool = await asyncpg.create_pool(
+            host=DB_HOST,
+            port=DB_PORT,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME,
+            ssl="require",
+        )
     
     wrapper = AsyncpgConnectionWrapper(_pool)
     wrapper.conn = await _pool.acquire()
     return wrapper
 
 async def init_db():
-    if not DATABASE_URL:
+    if not DB_HOST:
         return
     db = await get_db()
     try:
@@ -334,7 +335,7 @@ async def init_db():
         await db.close()
 
 async def reset_db_for_prototype():
-    if not DATABASE_URL:
+    if not DB_HOST:
         return
     db = await get_db()
     try:
