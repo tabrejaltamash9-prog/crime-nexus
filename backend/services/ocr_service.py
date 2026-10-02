@@ -56,12 +56,34 @@ def _run_extraction(file_path: Path, mime_type: str) -> str:
             images = convert_from_path(file_path)
             
             if engine == "surya":
-                from services.ocr.surya_engine import extract_document_text
-                from services.ocr.quality_gate import apply_quality_gate
-                structured_pages = extract_document_text(images)
-                quality_gated = apply_quality_gate(structured_pages)
-                # Return the quality gated output as JSON string
-                return json.dumps(quality_gated)
+                logger.info("Using Free OCR API instead of Surya to prevent memory crashes on Render...")
+                try:
+                    import urllib.request
+                    import urllib.parse
+                    import json
+                    import base64
+                    
+                    with open(file_path, "rb") as image_file:
+                        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+                        
+                    data = urllib.parse.urlencode({
+                        'base64Image': 'data:image/jpeg;base64,' + encoded_string,
+                        'apikey': 'helloworld',
+                        'language': 'eng',
+                    }).encode('utf-8')
+                    
+                    req = urllib.request.Request('https://api.ocr.space/parse/image', data=data, method='POST')
+                    with urllib.request.urlopen(req, timeout=30) as response:
+                        result = json.loads(response.read().decode())
+                        
+                    if result.get("IsErroredOnProcessing") == False:
+                        return result.get("ParsedResults")[0].get("ParsedText")
+                    else:
+                        logger.error(f"OCR API Error: {result.get('ErrorMessage')}")
+                        return ""
+                except Exception as e:
+                    logger.error(f"OCR API failed: {e}")
+                    return ""
             else:
                 logger.warning(f"Unsupported OCR engine: {engine}")
                 return ""
@@ -71,11 +93,34 @@ def _run_extraction(file_path: Path, mime_type: str) -> str:
         try:
             img = Image.open(file_path)
             if engine == "surya":
-                from services.ocr.surya_engine import extract_document_text
-                from services.ocr.quality_gate import apply_quality_gate
-                structured_pages = extract_document_text([img])
-                quality_gated = apply_quality_gate(structured_pages)
-                return json.dumps(quality_gated)
+                logger.info("Using Free OCR API instead of Surya to prevent memory crashes on Render...")
+                try:
+                    import urllib.request
+                    import urllib.parse
+                    import json
+                    import base64
+                    
+                    with open(file_path, "rb") as image_file:
+                        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+                        
+                    data = urllib.parse.urlencode({
+                        'base64Image': 'data:image/jpeg;base64,' + encoded_string,
+                        'apikey': 'helloworld',
+                        'language': 'eng',
+                    }).encode('utf-8')
+                    
+                    req = urllib.request.Request('https://api.ocr.space/parse/image', data=data, method='POST')
+                    with urllib.request.urlopen(req, timeout=30) as response:
+                        result = json.loads(response.read().decode())
+                        
+                    if result.get("IsErroredOnProcessing") == False:
+                        return result.get("ParsedResults")[0].get("ParsedText")
+                    else:
+                        logger.error(f"OCR API Error: {result.get('ErrorMessage')}")
+                        return ""
+                except Exception as e:
+                    logger.error(f"OCR API failed: {e}")
+                    return ""
             else:
                 logger.warning(f"Unsupported OCR engine: {engine}")
                 return ""
